@@ -1,12 +1,18 @@
 use clap::{Arg, App};
 use std::println;
 use std::fs;
-use json;
+use serde::{Serialize, Deserialize};
+use serde_json;
+
+#[derive(Debug, Deserialize, Serialize)]
+struct Configuration {
+    run_length_days: u64
+}
 
 /// Evaluate everything.
-fn evaluate(config: json::JsonValue) -> Result<(), Box<dyn std::error::Error>> {
+fn evaluate(cfg: Configuration) -> Result<(), Box<dyn std::error::Error>> {
 
-    
+    println!("Run length = {} days", cfg.run_length_days);
 
     return Ok(());
 }
@@ -26,7 +32,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config_file_path_str = matches.value_of("config").unwrap_or("default.json");
     println!("Using config from {}", config_file_path_str);
 
-    let config = json::parse(&fs::read_to_string(config_file_path_str)?)?;
+    let cfg: Configuration = serde_json::from_str(&fs::read_to_string(config_file_path_str)?)?;
 
-    return evaluate(config);
+
+    return evaluate(cfg);
 }
