@@ -53,8 +53,8 @@ struct Configuration {
 }
 
 /// Evaluate the state of the simulation at the specified time point.
-fn evaluate_at_time_point(time_point: DateTime<Utc>, cfg: &Configuration) {
-    println!("Evaluating at {:?}", time_point);
+fn evaluate_at_time_point(_time_point: DateTime<Utc>, _cfg: &Configuration) {
+   // println!("Evaluating at {:?}", time_point);
 }
 
 struct DateTimeIterator(DateTime<Utc>, DateTime<Utc>, Duration);
@@ -81,8 +81,6 @@ fn evaluate(cfg: Configuration) -> Result<(), Box<dyn std::error::Error>> {
     let start = Utc::now();
     let step = Duration::minutes(2);
     let end = start + Duration::days(cfg.run_length_days as i64);
-
-    let total_steps = (end - start).num_minutes() / step.num_minutes();
 
     let mut time_point = start;
     for t in DateTimeIterator(start, end, step) {
