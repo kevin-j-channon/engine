@@ -139,9 +139,11 @@ fn evaluate(cfg: Configuration) -> Result<(), Box<dyn std::error::Error>> {
     let step = Duration::minutes(2);
     let end = start + Duration::days(cfg.run_length_days as i64);
 
+    let weather = Weather{};
+
     let mut time_point = start;
     for t in DateTimeIterator(start, end, step) {
-        evaluate_at_time_point(t, &cfg.supplies, &cfg.loads, &cfg.stores);
+        evaluate_at_time_point(t, &weather, &cfg.supplies, &cfg.loads, &cfg.stores);
         
         time_point = time_point + step;
     }
