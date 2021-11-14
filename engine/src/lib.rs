@@ -41,6 +41,22 @@ impl SolarPanelArray {
     }
 }
 
+#[cfg(test)]
+mod tests{
+    use super::*;
+
+    #[test]
+    fn solar_panel_array_output_is_correct() {
+        let array = SolarPanelArray::new(8, Location{ latitude: 0.0, longitude: 0.0, elevation: 0.0}, Orientation{direction: 0.0, slope: 0.0}, 300.0);
+
+        let time = DateTime::parse_from_str("2021-11-14T00:00:00+0000", "%Y-%m-%dT%H:%M:%S%z").unwrap().with_timezone(&Utc);
+
+        let weather = Weather{};
+
+        assert_eq!(0.0, array.output(&time, &weather));
+    }
+}
+
 struct Weather {}
 
 impl Weather {
