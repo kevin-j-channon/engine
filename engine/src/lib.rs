@@ -129,6 +129,7 @@ impl Weather {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(tag = "type")]
 enum Supply {
     Solar { panels: std::vec::Vec<SolarPanelArray> },
     Wind {},
