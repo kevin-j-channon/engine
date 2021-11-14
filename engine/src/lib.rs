@@ -35,9 +35,15 @@ impl SolarPanelArray {
             nominal_power_w};
     }
 
+    /// The incident intensity factor is a factor that accounts for the location & orientation of the panel array
+    /// (on the globe) and the time of day & date. It is a value between zero and one.
+    pub(crate) fn incident_intensity_factor(&self, _time: &DateTime<Utc>) -> f32 {
+        return 1.0
+    }
+
     /// Get the output of the array.
-    pub fn output(&self, _time: &DateTime<Utc>, _weather: &Weather) -> f64 {
-        return 0.0;
+    pub fn output(&self, time: &DateTime<Utc>, _weather: &Weather) -> f32 {
+        return self.nominal_power_w * self.incident_intensity_factor(time);
     }
 }
 
@@ -46,14 +52,21 @@ mod tests{
     use super::*;
 
     #[test]
+    fn solar_panel_array_incident_intensity_factor_is_correct() {
+        let array = SolarPanelArray::new(8, Location{ latitude: 0.0, longitude: 0.0, elevation: 0.0}, Orientation{direction: 0.0, slope: 0.0}, 300.0);
+        let time = DateTime::parse_from_str("2021-11-14T00:00:00+0000", "%Y-%m-%dT%H:%M:%S%z").unwrap().with_timezone(&Utc);
+
+        assert_eq!(1.0, array.incident_intensity_factor(&time));
+    }
+
+    #[test]
     fn solar_panel_array_output_is_correct() {
         let array = SolarPanelArray::new(8, Location{ latitude: 0.0, longitude: 0.0, elevation: 0.0}, Orientation{direction: 0.0, slope: 0.0}, 300.0);
-
         let time = DateTime::parse_from_str("2021-11-14T00:00:00+0000", "%Y-%m-%dT%H:%M:%S%z").unwrap().with_timezone(&Utc);
 
         let weather = Weather{};
 
-        assert_eq!(0.0, array.output(&time, &weather));
+        assert_eq!(300.0, array.output(&time, &weather));
     }
 }
 
@@ -102,7 +115,7 @@ pub struct Configuration {
 }
 
 fn calculate_supply(time_point: &DateTime<Utc>, weather: &Weather, supplies: &std::vec::Vec<Supply>) -> (){
-    let mut _supplied_amount: f64 = 0.0;
+    let mut _supplied_amount: f32 = 0.0;
     // let mut cost: f32 = 0.0;
     for supply in supplies {
         match supply {
