@@ -1,23 +1,23 @@
 use std::println;
 use serde::{Serialize, Deserialize};
-use chrono::{Utc, Duration, DateTime};
+use chrono::{Utc, Duration, DateTime, NaiveDate};
 use std::mem;
 
 #[derive(Debug, Deserialize, Serialize)]
-struct Location {
+pub(crate) struct Location {
     latitude: f32,
     longitude: f32,
     elevation: f32
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct Orientation {
+pub(crate) struct Orientation {
     direction: f32,
     slope: f32
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct SolarPanelArray {
+pub(crate) struct SolarPanelArray {
     size: u32,
     location: Location,
     orientation: Orientation,
@@ -37,8 +37,26 @@ impl SolarPanelArray {
 
     /// The incident intensity factor is a factor that accounts for the location & orientation of the panel array
     /// (on the globe) and the time of day & date. It is a value between zero and one.
-    pub(crate) fn incident_intensity_factor(&self, _time: &DateTime<Utc>) -> f32 {
-        return 1.0
+    pub(crate) fn incident_intensity_factor(&self, time: &DateTime<Utc>) -> f32 {
+        let θ: f32 = (23.5 as f32).to_radians();
+        let φ: f32 = self.location.latitude.to_radians() - θ;
+
+        let ω_day: f32 = 2.0 * std::f32::consts::PI / (24.0 * 60.0);
+        let ω_year: f32 = ω_day / 365.256;
+
+        let t = (*time - DateTime::<Utc>::from_utc(NaiveDate::from_ymd(2021, 6, 22).and_hms(0, 0, 0), Utc).with_timezone(&Utc)).num_minutes() as f32;
+        println!("time = {:?}", time);
+        println!("t = {}", t);
+        println!("θ.cos() = {}", θ.cos());
+        println!("θ.sin() = {}", θ.sin());
+        println!("φ.cos() = {}", φ.cos());
+        println!("φ.sin() = {}", φ.sin());
+
+        let out = (ω_year * t).cos() * φ.cos() * θ.sin() * (ω_day * t).cos()
+                + (ω_year * t).cos() * φ.sin() * θ.cos()
+                + (ω_year * t).sin() * θ.sin() * (ω_day * t).sin();
+
+        return if out > 0.0 { out } else { 0.0 };
     }
 
     /// Get the output of the array.
@@ -53,16 +71,16 @@ mod tests{
 
     #[test]
     fn solar_panel_array_incident_intensity_factor_is_correct() {
-        let array = SolarPanelArray::new(8, Location{ latitude: 0.0, longitude: 0.0, elevation: 0.0}, Orientation{direction: 0.0, slope: 0.0}, 300.0);
-        let time = DateTime::parse_from_str("2021-11-14T00:00:00+0000", "%Y-%m-%dT%H:%M:%S%z").unwrap().with_timezone(&Utc);
+        let array = SolarPanelArray::new(8, Location{ latitude: 23.5, longitude: 0.0, elevation: 0.0}, Orientation{direction: 0.0, slope: 0.0}, 300.0);
+        let time = DateTime::<Utc>::from_utc(NaiveDate::from_ymd(2021, 6, 22).and_hms(0, 0, 0), Utc).with_timezone(&Utc);
 
         assert_eq!(1.0, array.incident_intensity_factor(&time));
     }
 
     #[test]
     fn solar_panel_array_output_is_correct() {
-        let array = SolarPanelArray::new(8, Location{ latitude: 0.0, longitude: 0.0, elevation: 0.0}, Orientation{direction: 0.0, slope: 0.0}, 300.0);
-        let time = DateTime::parse_from_str("2021-11-14T00:00:00+0000", "%Y-%m-%dT%H:%M:%S%z").unwrap().with_timezone(&Utc);
+        let array = SolarPanelArray::new(8, Location{ latitude: 23.5, longitude: 0.0, elevation: 0.0}, Orientation{direction: 0.0, slope: 0.0}, 300.0);
+        let time = DateTime::<Utc>::from_utc(NaiveDate::from_ymd(2021, 6, 22).and_hms(0, 0, 0), Utc).with_timezone(&Utc);
 
         let weather = Weather{};
 
