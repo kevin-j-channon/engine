@@ -25,6 +25,8 @@ struct SolarPanelArray {
 }
 
 impl SolarPanelArray {
+    
+    #[allow(dead_code)]
     pub fn new(size: u32, location: Location, orientation: Orientation, nominal_power_w: f32) -> SolarPanelArray{
         return SolarPanelArray{
             size,
@@ -34,7 +36,7 @@ impl SolarPanelArray {
     }
 
     /// Get the output of the array.
-    pub fn output(&self, time: &DateTime<Utc>, weather: &Weather) -> f64 {
+    pub fn output(&self, _time: &DateTime<Utc>, _weather: &Weather) -> f64 {
         return 0.0;
     }
 }
@@ -42,15 +44,18 @@ impl SolarPanelArray {
 struct Weather {}
 
 impl Weather {
-    fn temperature_c(time: &DateTime<Utc>, location: &Location) ->f32 {
+    #[allow(dead_code)]
+    fn temperature_c(_time: &DateTime<Utc>, _location: &Location) ->f32 {
         return 20.0;
     }
 
-    fn cloud_cover(time: &DateTime<Utc>, location: &Location) -> f32 {
+    #[allow(dead_code)]
+    fn cloud_cover(_time: &DateTime<Utc>, _location: &Location) -> f32 {
         return 0.0;
     }
 
-    fn wind_speed_ms(time: &DateTime<Utc>, location: &Location) -> f32 {
+    #[allow(dead_code)]
+    fn wind_speed_ms(_time: &DateTime<Utc>, _location: &Location) -> f32 {
         return 0.0;
     }
 }
@@ -80,18 +85,14 @@ pub struct Configuration {
     stores: std::vec::Vec<Storage>
 }
 
-fn calculate_solar(time_point: &DateTime<Utc>, weather: &Weather, solar_arrays: &std::vec::Vec<SolarPanelArray>, supplied_amount: &mut f64, cost: &mut f32) {
-    
-}
-
 fn calculate_supply(time_point: &DateTime<Utc>, weather: &Weather, supplies: &std::vec::Vec<Supply>) -> (){
-    let mut supplied_amount: f64 = 0.0;
-    let mut cost: f32 = 0.0;
+    let mut _supplied_amount: f64 = 0.0;
+    // let mut cost: f32 = 0.0;
     for supply in supplies {
         match supply {
             Supply::Solar{ panels } => { 
                 for array in panels {
-                    supplied_amount += array.output(time_point, weather);
+                    _supplied_amount += array.output(time_point, weather);
                 }
             }
             Supply::Wind{} => {}
@@ -108,7 +109,7 @@ fn evaluate_at_time_point(
     _loads: &std::vec::Vec<Load>,
     _stores: &std::vec::Vec<Storage>) {
 
-        let generation = calculate_supply(&time_point, weather, supplies);
+        let _generation = calculate_supply(&time_point, weather, supplies);
 }
 
 struct DateTimeIterator(DateTime<Utc>, DateTime<Utc>, Duration);
