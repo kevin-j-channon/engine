@@ -3,11 +3,25 @@ use serde::{Serialize, Deserialize};
 use chrono::{Utc, Duration, DateTime, NaiveDate};
 use std::mem;
 
+const EARTH_AXIS_TILT_RAD: f32 = 2.0 * std::f32::consts::PI * 23.46 / 360.0;
+const Ω_DAY: f32 = 2.0 * std::f32::consts::PI / (24.0 * 60.0);
+const Ω_YEAR: f32 = Ω_DAY / 365.256;
+
 #[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct Location {
     latitude: f32,
     longitude: f32,
     elevation: f32
+}
+
+impl Location {
+    pub(crate) fn new(lat: f32, lon: f32, ele: f32) -> Location {
+        return Location{
+            latitude: lat.to_radians(),
+            longitude: lon.to_radians(),
+            elevation: ele.to_radians()
+        };
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -38,23 +52,19 @@ impl SolarPanelArray {
     /// The incident intensity factor is a factor that accounts for the location & orientation of the panel array
     /// (on the globe) and the time of day & date. It is a value between zero and one.
     pub(crate) fn incident_intensity_factor(&self, time: &DateTime<Utc>) -> f32 {
-        let θ: f32 = (23.5 as f32).to_radians();
-        let φ: f32 = self.location.latitude.to_radians() - θ;
-
-        let ω_day: f32 = 2.0 * std::f32::consts::PI / (24.0 * 60.0);
-        let ω_year: f32 = ω_day / 365.256;
+        let θ: &f32 = &self.location.latitude;   // Lattitude of locaiton.
 
         let t = (*time - DateTime::<Utc>::from_utc(NaiveDate::from_ymd(2021, 6, 22).and_hms(0, 0, 0), Utc).with_timezone(&Utc)).num_minutes() as f32;
-        println!("time = {:?}", time);
-        println!("t = {}", t);
-        println!("θ.cos() = {}", θ.cos());
-        println!("θ.sin() = {}", θ.sin());
-        println!("φ.cos() = {}", φ.cos());
-        println!("φ.sin() = {}", φ.sin());
+         println!("time = {:?}", time);
+         println!("t = {}", t);
+         println!("θ.cos() = {}", θ.cos());
+         println!("θ.sin() = {}", θ.sin());
+         println!("φ.cos() = {}", (-EARTH_AXIS_TILT_RAD).cos());
+         println!("φ.sin() = {}", (-EARTH_AXIS_TILT_RAD).sin());
 
-        let out = (ω_year * t).cos() * φ.cos() * θ.sin() * (ω_day * t).cos()
-                + (ω_year * t).cos() * φ.sin() * θ.cos()
-                + (ω_year * t).sin() * θ.sin() * (ω_day * t).sin();
+        let out = (Ω_YEAR * t).cos() * (-EARTH_AXIS_TILT_RAD).cos() * θ.sin() * (Ω_DAY * t).cos()
+                - (Ω_YEAR * t).cos() * (-EARTH_AXIS_TILT_RAD).sin() * θ.cos()
+                + (Ω_YEAR * t).sin() * θ.sin() * (Ω_DAY * t).sin();
 
         return if out > 0.0 { out } else { 0.0 };
     }
@@ -71,15 +81,26 @@ mod tests{
 
     #[test]
     fn solar_panel_array_incident_intensity_factor_is_correct() {
-        let array = SolarPanelArray::new(8, Location{ latitude: 23.5, longitude: 0.0, elevation: 0.0}, Orientation{direction: 0.0, slope: 0.0}, 300.0);
+        let angle = std::f32::consts::FRAC_PI_2 - EARTH_AXIS_TILT_RAD;
+        let array = SolarPanelArray::new(8, Location{ latitude: angle, longitude: 0.0, elevation: 0.0}, Orientation{direction: 0.0, slope: 0.0}, 300.0);
         let time = DateTime::<Utc>::from_utc(NaiveDate::from_ymd(2021, 6, 22).and_hms(0, 0, 0), Utc).with_timezone(&Utc);
 
         assert_eq!(1.0, array.incident_intensity_factor(&time));
     }
 
     #[test]
+    fn solar_panel_array_incident_intensity_factor_is_correct_2() {
+        let angle = -EARTH_AXIS_TILT_RAD;
+        let array = SolarPanelArray::new(8, Location{ latitude: angle, longitude: 0.0, elevation: 0.0}, Orientation{direction: 0.0, slope: 0.0}, 300.0);
+        let time = DateTime::<Utc>::from_utc(NaiveDate::from_ymd(2021, 6, 22).and_hms(0, 0, 0), Utc).with_timezone(&Utc);
+
+        assert_eq!(0.0, array.incident_intensity_factor(&time));
+    }
+
+    #[test]
     fn solar_panel_array_output_is_correct() {
-        let array = SolarPanelArray::new(8, Location{ latitude: 23.5, longitude: 0.0, elevation: 0.0}, Orientation{direction: 0.0, slope: 0.0}, 300.0);
+        let angle = std::f32::consts::FRAC_PI_2 - EARTH_AXIS_TILT_RAD;
+        let array = SolarPanelArray::new(8, Location{ latitude: angle, longitude: 0.0, elevation: 0.0}, Orientation{direction: 0.0, slope: 0.0}, 300.0);
         let time = DateTime::<Utc>::from_utc(NaiveDate::from_ymd(2021, 6, 22).and_hms(0, 0, 0), Utc).with_timezone(&Utc);
 
         let weather = Weather{};
