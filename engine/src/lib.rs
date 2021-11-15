@@ -261,6 +261,39 @@ mod tests{
     }
 
     #[test]
+    fn location_normal_is_correct_equator() {
+        let location = Location::new( 0.0, 0.0, 0.0);
+
+        let normal = na::Vector3::<f32>::from_location(location);
+
+        assert!((1.0 - normal[X]).abs() < 0.0001);
+        assert!((0.0 - normal[Y]).abs() < 0.0001);
+        assert!((0.0 - normal[Z]).abs() < 0.0001);
+    }
+
+    #[test]
+    fn location_normal_is_correct_south_pole() {
+        let location = Location::new( -90.0, 0.0, 0.0);
+
+        let normal = na::Vector3::<f32>::from_location(location);
+
+        assert!((0.0 - normal[X]).abs() < 0.0001);
+        assert!((0.0 - normal[Y]).abs() < 0.0001);
+        assert!((-1.0 - normal[Z]).abs() < 0.0001);
+    }
+
+    #[test]
+    fn location_normal_is_correct_45_deg_north() {
+        let location = Location::new( 45.0, 0.0, 0.0);
+
+        let normal = na::Vector3::<f32>::from_location(location);
+
+        assert!((1.0 / std::f32::consts::SQRT_2 - normal[X]).abs() < 0.0001);
+        assert!((0.0 - normal[Y]).abs() < 0.0001);
+        assert!((1.0 / std::f32::consts::SQRT_2 - normal[Z]).abs() < 0.0001);
+    }
+
+    #[test]
     fn solar_panel_array_incident_intensity_factor_is_correct() {
         let angle = std::f32::consts::FRAC_PI_2 - EARTH_AXIS_TILT_RAD;
         let array = SolarPanelArray::new(8, Location{ latitude: angle, longitude: 0.0, elevation: 0.0}, Orientation{direction: 0.0, slope: 0.0}, 300.0);
