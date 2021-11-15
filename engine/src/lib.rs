@@ -9,7 +9,11 @@ const EARTH_AXIS_TILT_RAD: f32 = 2.0 * std::f32::consts::PI * 23.46 / 360.0;
 const Ω_DAY: f32 = 2.0 * std::f32::consts::PI / ((4.0 + 56.0 * 60.0 + 3600.0 * 23.0) / 60.0);
 const Ω_YEAR: f32 = Ω_DAY / 365.256;
 
-const REFERENCE_TIME_POINT: DateTime<Utc> = DateTime::<Utc>::from_utc(NaiveDate::from_ymd(2021, 6, 22).and_hms(0, 0, 0), Utc).with_timezone(&Utc);
+pub(crate) const X: usize = 0;
+pub(crate) const Y: usize = 1;
+pub(crate) const Z: usize = 2;
+
+// let REFERENCE_TIME_POINT: DateTime<Utc> = ;
 
 pub(crate) trait SimulationTimeIndex {
     fn from_datetime(time: &DateTime<Utc>) -> f32;
@@ -17,7 +21,7 @@ pub(crate) trait SimulationTimeIndex {
 
 impl SimulationTimeIndex for DateTime<Utc> {
     fn from_datetime(time: &DateTime<Utc>) -> f32 {
-        return (*time - REFERENCE_TIME_POINT).num_minutes() as f32;
+        return (*time - DateTime::<Utc>::from_utc(NaiveDate::from_ymd(2021, 6, 22).and_hms(12, 0, 0), Utc).with_timezone(&Utc)).num_minutes() as f32;
     }
 }
 
@@ -42,6 +46,42 @@ impl Location {
             self.latitude.cos() * (Ω_DAY * time_idx).cos(),
             self.latitude.cos() * (Ω_DAY * time_idx).sin(),
             self.latitude.sin()];
+    }
+}
+
+pub(crate) trait Normal {
+    /// Create a Normal object from a Location.
+    fn from_location(location: Location) -> Self;
+
+    /// Rotate a normal vector based on the time of day.
+    fn apply_daytime_rotation(self, time_idx: &f32) -> Self;
+
+    /// Rotate a normal vector based on the tilt of the earths axis.
+    fn apply_planetary_axis_tilt(self) -> Self;
+
+    /// Rotate a normal according to the orientation of a surface normal.
+    fn apply_surface_normal_rotation(self, orientation: Orientation) -> Self;
+}
+
+impl Normal for na::Vector3<f32> {
+    fn from_location(location: Location) -> Self {
+        return na::vector![
+            location.latitude.cos() * location.longitude.cos(),
+            location.latitude.cos() * location.longitude.sin(),
+            location.latitude.sin()
+            ];
+    }
+
+    fn apply_daytime_rotation(self, time_idx: &f32) -> Self {
+        return self;
+    }
+
+    fn apply_planetary_axis_tilt(self) -> Self {
+        return self;
+    }
+
+    fn apply_surface_normal_rotation(self, orientation: Orientation) -> Self {
+        return self;
     }
 }
 
@@ -88,10 +128,6 @@ impl SolarPanelArray {
                 + (Ω_YEAR * t).sin() * θ.sin() * (Ω_DAY * t).sin();
 
         return if out > 0.0 { out } else { 0.0 };
-    }
-
-    pub(crate) fn panel_orientation_factor(&self) -> f32 {
-
     }
 
     /// Get the output of the array.
@@ -214,8 +250,14 @@ mod tests{
     use super::*;
 
     #[test]
-    fn location_normal_is_correct_north_pole_midnight() {
+    fn location_normal_is_correct_north_pole() {
+        let location = Location::new( 90.0, 0.0, 0.0);
 
+        let normal = na::Vector3::<f32>::from_location(location);
+
+        assert!((0.0 - normal[X]).abs() < 0.0001);
+        assert!((0.0 - normal[Y]).abs() < 0.0001);
+        assert_eq!(1.0, normal[Z]);
     }
 
     #[test]
