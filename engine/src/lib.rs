@@ -2,10 +2,24 @@ use std::println;
 use serde::{Serialize, Deserialize};
 use chrono::{Utc, Duration, DateTime, NaiveDate};
 use std::mem;
+extern crate nalgebra as na;
+use na::{Vector3, Rotation3};
 
 const EARTH_AXIS_TILT_RAD: f32 = 2.0 * std::f32::consts::PI * 23.46 / 360.0;
-const Ω_DAY: f32 = 2.0 * std::f32::consts::PI / (24.0 * 60.0);
+const Ω_DAY: f32 = 2.0 * std::f32::consts::PI / ((4.0 + 56.0 * 60.0 + 3600.0 * 23.0) / 60.0);
 const Ω_YEAR: f32 = Ω_DAY / 365.256;
+
+const REFERENCE_TIME_POINT: DateTime<Utc> = DateTime::<Utc>::from_utc(NaiveDate::from_ymd(2021, 6, 22).and_hms(0, 0, 0), Utc).with_timezone(&Utc);
+
+pub(crate) trait SimulationTimeIndex {
+    fn from_datetime(time: &DateTime<Utc>) -> f32;
+}
+
+impl SimulationTimeIndex for DateTime<Utc> {
+    fn from_datetime(time: &DateTime<Utc>) -> f32 {
+        return (*time - REFERENCE_TIME_POINT).num_minutes() as f32;
+    }
+}
 
 #[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct Location {
@@ -21,6 +35,13 @@ impl Location {
             longitude: lon.to_radians(),
             elevation: ele.to_radians()
         };
+    }
+
+    pub(crate) fn normal(&self, time_idx: &f32) -> na::Vector3<f32> {
+        return na::vector![
+            self.latitude.cos() * (Ω_DAY * time_idx).cos(),
+            self.latitude.cos() * (Ω_DAY * time_idx).sin(),
+            self.latitude.sin()];
     }
 }
 
@@ -69,43 +90,13 @@ impl SolarPanelArray {
         return if out > 0.0 { out } else { 0.0 };
     }
 
+    pub(crate) fn panel_orientation_factor(&self) -> f32 {
+
+    }
+
     /// Get the output of the array.
     pub fn output(&self, time: &DateTime<Utc>, _weather: &Weather) -> f32 {
         return self.nominal_power_w * self.incident_intensity_factor(time);
-    }
-}
-
-#[cfg(test)]
-mod tests{
-    use super::*;
-
-    #[test]
-    fn solar_panel_array_incident_intensity_factor_is_correct() {
-        let angle = std::f32::consts::FRAC_PI_2 - EARTH_AXIS_TILT_RAD;
-        let array = SolarPanelArray::new(8, Location{ latitude: angle, longitude: 0.0, elevation: 0.0}, Orientation{direction: 0.0, slope: 0.0}, 300.0);
-        let time = DateTime::<Utc>::from_utc(NaiveDate::from_ymd(2021, 6, 22).and_hms(0, 0, 0), Utc).with_timezone(&Utc);
-
-        assert_eq!(1.0, array.incident_intensity_factor(&time));
-    }
-
-    #[test]
-    fn solar_panel_array_incident_intensity_factor_is_correct_2() {
-        let angle = -EARTH_AXIS_TILT_RAD;
-        let array = SolarPanelArray::new(8, Location{ latitude: angle, longitude: 0.0, elevation: 0.0}, Orientation{direction: 0.0, slope: 0.0}, 300.0);
-        let time = DateTime::<Utc>::from_utc(NaiveDate::from_ymd(2021, 6, 22).and_hms(0, 0, 0), Utc).with_timezone(&Utc);
-
-        assert_eq!(0.0, array.incident_intensity_factor(&time));
-    }
-
-    #[test]
-    fn solar_panel_array_output_is_correct() {
-        let angle = std::f32::consts::FRAC_PI_2 - EARTH_AXIS_TILT_RAD;
-        let array = SolarPanelArray::new(8, Location{ latitude: angle, longitude: 0.0, elevation: 0.0}, Orientation{direction: 0.0, slope: 0.0}, 300.0);
-        let time = DateTime::<Utc>::from_utc(NaiveDate::from_ymd(2021, 6, 22).and_hms(0, 0, 0), Utc).with_timezone(&Utc);
-
-        let weather = Weather{};
-
-        assert_eq!(300.0, array.output(&time, &weather));
     }
 }
 
@@ -216,4 +207,43 @@ pub fn evaluate(cfg: Configuration) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     return Ok(());
+}
+
+#[cfg(test)]
+mod tests{
+    use super::*;
+
+    #[test]
+    fn location_normal_is_correct_north_pole_midnight() {
+
+    }
+
+    #[test]
+    fn solar_panel_array_incident_intensity_factor_is_correct() {
+        let angle = std::f32::consts::FRAC_PI_2 - EARTH_AXIS_TILT_RAD;
+        let array = SolarPanelArray::new(8, Location{ latitude: angle, longitude: 0.0, elevation: 0.0}, Orientation{direction: 0.0, slope: 0.0}, 300.0);
+        let time = DateTime::<Utc>::from_utc(NaiveDate::from_ymd(2021, 6, 22).and_hms(0, 0, 0), Utc).with_timezone(&Utc);
+
+        assert_eq!(1.0, array.incident_intensity_factor(&time));
+    }
+
+    #[test]
+    fn solar_panel_array_incident_intensity_factor_is_correct_2() {
+        let angle = -EARTH_AXIS_TILT_RAD;
+        let array = SolarPanelArray::new(8, Location{ latitude: angle, longitude: 0.0, elevation: 0.0}, Orientation{direction: 0.0, slope: 0.0}, 300.0);
+        let time = DateTime::<Utc>::from_utc(NaiveDate::from_ymd(2021, 6, 22).and_hms(0, 0, 0), Utc).with_timezone(&Utc);
+
+        assert_eq!(0.0, array.incident_intensity_factor(&time));
+    }
+
+    #[test]
+    fn solar_panel_array_output_is_correct() {
+        let angle = std::f32::consts::FRAC_PI_2 - EARTH_AXIS_TILT_RAD;
+        let array = SolarPanelArray::new(8, Location{ latitude: angle, longitude: 0.0, elevation: 0.0}, Orientation{direction: 0.0, slope: 0.0}, 300.0);
+        let time = DateTime::<Utc>::from_utc(NaiveDate::from_ymd(2021, 6, 22).and_hms(0, 0, 0), Utc).with_timezone(&Utc);
+
+        let weather = Weather{};
+
+        assert_eq!(300.0, array.output(&time, &weather));
+    }
 }
