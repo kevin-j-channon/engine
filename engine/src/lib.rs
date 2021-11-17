@@ -6,7 +6,8 @@ extern crate nalgebra as na;
 use na::{Vector3, Rotation3};
 
 const EARTH_AXIS_TILT_RAD: f32 = 2.0 * std::f32::consts::PI * 23.46 / 360.0;
-const Ω_DAY: f32 = 2.0 * std::f32::consts::PI / ((4.0 + 56.0 * 60.0 + 3600.0 * 23.0) / 60.0);
+const MINUTES_PER_DAY: f32 = 60.0 * 23.0 + 56.0 + (4.0 / 60.0);
+const Ω_DAY: f32 = 2.0 * std::f32::consts::PI / MINUTES_PER_DAY;
 const Ω_YEAR: f32 = Ω_DAY / 365.256;
 
 pub(crate) const X: usize = 0;
@@ -54,7 +55,7 @@ pub(crate) trait Normal {
     fn from_location(location: Location) -> Self;
 
     /// Rotate a normal vector based on the time of day.
-    fn apply_daytime_rotation(self, time_idx: &f32) -> Self;
+    fn at_time_index(self, time_idx: &f32) -> Self;
 
     /// Rotate a normal vector based on the tilt of the earths axis.
     fn apply_planetary_axis_tilt(self) -> Self;
@@ -72,8 +73,16 @@ impl Normal for na::Vector3<f32> {
             ];
     }
 
-    fn apply_daytime_rotation(self, time_idx: &f32) -> Self {
-        return self;
+    fn at_time_index(self, time_idx: &f32) -> Self {
+        // A rotation due to the time is a rotation about the z-axis.
+        let t = time_idx - (time_idx / MINUTES_PER_DAY).round();
+        let rotation_angle = Ω_DAY * time_idx;
+
+        return na::vector!{
+          self[X] * rotation_angle.cos(),
+          self[Y] * rotation_angle.sin(),
+          self[Z]   
+        };
     }
 
     fn apply_planetary_axis_tilt(self) -> Self {
@@ -248,6 +257,18 @@ pub fn evaluate(cfg: Configuration) -> Result<(), Box<dyn std::error::Error>> {
 #[cfg(test)]
 mod tests{
     use super::*;
+
+    #[test]
+    fn location_normal_is_correct_at_time_index_0() {
+        let location = Location::new(0.0, 0.0, 0.0);
+        let normal = na::Vector3::<f32>::from_location(location);
+        
+        let normal_at_time_index_0 = normal.clone().at_time_index(&0.0);
+
+        assert_eq!(normal[X], normal_at_time_index_0[X]);
+        assert_eq!(normal[Y], normal_at_time_index_0[Y]);
+        assert_eq!(normal[Z], normal_at_time_index_0[Z]);
+    }
 
     #[test]
     fn location_normal_is_correct_north_pole() {
