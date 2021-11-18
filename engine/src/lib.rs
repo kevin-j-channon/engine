@@ -74,14 +74,12 @@ impl Normal for na::Vector3<f32> {
     }
 
     fn at_time_index(self, time_idx: &f32) -> Self {
-        // A rotation due to the time is a rotation about the z-axis.
-        let t = time_idx - (time_idx / MINUTES_PER_DAY).round();
         let rotation_angle = Ω_DAY * time_idx;
 
         return na::vector!{
-          self[X] * rotation_angle.cos(),
-          self[Y] * rotation_angle.sin(),
-          self[Z]   
+          self[X] * rotation_angle.cos() + self[Y] * rotation_angle.sin(),
+          -self[X] * rotation_angle.sin() + self[Y] * rotation_angle.cos(),
+          self[Z]   // A rotation due to the time is a rotation about the z-axis; so Z doesn't change
         };
     }
 
@@ -257,6 +255,21 @@ pub fn evaluate(cfg: Configuration) -> Result<(), Box<dyn std::error::Error>> {
 #[cfg(test)]
 mod tests{
     use super::*;
+
+    #[test]
+    fn location_normal_is_correct_at_arbitrary_time_index() {
+        let location = Location::new(0.0, 0.0, 0.0);
+        let normal = na::Vector3::<f32>::from_location(location);
+        
+        let normal_at_time_index = normal.clone().at_time_index(&12345.0);
+
+        let new_x = (Ω_DAY * 12345.0).cos();
+        let new_y = -(Ω_DAY * 12345.0).sin();
+
+        assert_eq!(new_x, normal_at_time_index[X]);
+        assert_eq!(new_y, normal_at_time_index[Y]);
+        assert_eq!(0.0, normal_at_time_index[Z]);
+    }
 
     #[test]
     fn location_normal_is_correct_at_time_index_0() {
