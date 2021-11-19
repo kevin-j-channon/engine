@@ -74,17 +74,11 @@ impl Normal for na::Vector3<f32> {
     }
 
     fn at_time_index(self, time_idx: &f32) -> Self {
-        let rotation_angle = Ω_DAY * time_idx;
-
-        return na::vector!{
-          self[X] * rotation_angle.cos() + self[Y] * rotation_angle.sin(),
-          -self[X] * rotation_angle.sin() + self[Y] * rotation_angle.cos(),
-          self[Z]   // A rotation due to the time is a rotation about the z-axis; so Z doesn't change
-        };
+        return Rotation3::from_euler_angles(0.0, 0.0, -(Ω_DAY * time_idx)).transform_vector(&self);
     }
 
     fn apply_planetary_axis_tilt(self) -> Self {
-        return self;
+        return Rotation3::from_euler_angles(0.0, EARTH_AXIS_TILT_RAD, 0.0).transform_vector(&self);
     }
 
     fn apply_surface_normal_rotation(self, orientation: Orientation) -> Self {
@@ -255,6 +249,17 @@ pub fn evaluate(cfg: Configuration) -> Result<(), Box<dyn std::error::Error>> {
 #[cfg(test)]
 mod tests{
     use super::*;
+
+    #[test]
+    fn location_normal_tilt_is_correctly_applied() {
+        let normal = na::Vector3::<f32>::from_location(Location::new(0.0, 0.0, 0.0));
+        
+        let tilted_normal = normal.apply_planetary_axis_tilt();
+
+        assert_eq!((-EARTH_AXIS_TILT_RAD).cos(), tilted_normal[X]);
+        assert_eq!(0.0, tilted_normal[Y]);
+        assert_eq!((-EARTH_AXIS_TILT_RAD).sin(), tilted_normal[Z]);
+    }
 
     #[test]
     fn location_normal_is_correct_at_arbitrary_time_index() {
